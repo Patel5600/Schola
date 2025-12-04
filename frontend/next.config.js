@@ -2,17 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost'],
+    domains: ['placeholder.com'],
   },
-  // PWA Configuration
-  webpack: (config) => {
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-    };
-    return config;
-  },
-}
+};
 
-module.exports = nextConfig
-
+module.exports = nextConfig;

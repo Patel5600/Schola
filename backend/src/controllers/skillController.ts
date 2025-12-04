@@ -1,68 +1,64 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { pool } from '../config/database';
+import { skillService } from '../services/skillService';
 
-export const getSkills = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const { canTeach, seekingMentorship } = req.query;
-    let query = 'SELECT * FROM skills WHERE 1=1';
-    const params: any[] = [];
-    
-    if (canTeach === 'true') {
-      query += ' AND can_teach = TRUE';
+export const skillController = {
+  async create(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const skill = await skillService.create(req.body, req.user!.userId);
+      res.status(201).json(skill);
+    } catch (error) {
+      next(error);
     }
-    if (seekingMentorship === 'true') {
-      query += ' AND seeking_mentorship = TRUE';
+  },
+
+  async getAll(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { type, tags, isActive } = req.query;
+      const skills = await skillService.getAll({
+        type: type as 'offer' | 'request',
+        tags: tags ? (Array.isArray(tags) ? tags as string[] : [tags as string]) : undefined,
+        isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
+      });
+      res.json(skills);
+    } catch (error) {
+      next(error);
     }
-    
-    const result = await pool.query(query, params);
-    res.json({ skills: result.rows });
-  } catch (error) {
-    next(error);
-  }
-};
+  },
 
-export const addSkill = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const { skillName, skillLevel, description, canTeach, seekingMentorship } = req.body;
-    const result = await pool.query(
-      `INSERT INTO skills (user_id, skill_name, skill_level, description, can_teach, seeking_mentorship)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [req.user!.id, skillName, skillLevel, description, canTeach || false, seekingMentorship || false]
-    );
-    res.status(201).json({ skill: result.rows[0] });
-  } catch (error) {
-    next(error);
-  }
-};
+  async getById(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const skill = await skillService.getById(req.params.id);
+      res.json(skill);
+    } catch (error) {
+      next(error);
+    }
+  },
 
-export const updateSkill = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const { skillName, skillLevel, description, canTeach, seekingMentorship } = req.body;
-    const result = await pool.query(
-      `UPDATE skills 
-       SET skill_name = COALESCE($1, skill_name),
-           skill_level = COALESCE($2, skill_level),
-           description = COALESCE($3, description),
-           can_teach = COALESCE($4, can_teach),
-           seeking_mentorship = COALESCE($5, seeking_mentorship)
-       WHERE id = $6 AND user_id = $7
-       RETURNING *`,
-      [skillName, skillLevel, description, canTeach, seekingMentorship, req.params.id, req.user!.id]
-    );
-    res.json({ skill: result.rows[0] });
-  } catch (error) {
-    next(error);
-  }
-};
+  async update(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const skill = await skillService.update(
+        req.params.id,
+        req.body,
+        req.user!.userId,
+        req.user!.role
+      );
+      res.json(skill);
+    } catch (error) {
+      next(error);
+    }
+  },
 
-export const deleteSkill = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    await pool.query('DELETE FROM skills WHERE id = $1 AND user_id = $2', [req.params.id, req.user!.id]);
-    res.json({ message: 'Skill deleted' });
-  } catch (error) {
-    next(error);
-  }
+  async delete(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const result = await skillService.delete(
+        req.params.id,
+        req.user!.userId,
+        req.user!.role
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
 };
-

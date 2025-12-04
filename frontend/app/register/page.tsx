@@ -29,7 +29,20 @@ export default function RegisterPage() {
       toast.success('Registration successful! Please check your email for OTP verification.')
       router.push('/verify-otp')
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Registration failed')
+      console.error('Registration error:', error)
+      
+      // Handle different error types
+      if (error.response) {
+        // Server responded with error
+        const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Registration failed'
+        toast.error(errorMessage)
+      } else if (error.request) {
+        // Request was made but no response received
+        toast.error('Unable to connect to server. Please check if the backend is running.')
+      } else {
+        // Something else happened
+        toast.error(error.message || 'Registration failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }

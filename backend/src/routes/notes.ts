@@ -1,15 +1,15 @@
-import express from 'express';
+import { Router } from 'express';
+import { noteController } from '../controllers/noteController';
 import { authenticate } from '../middleware/auth';
-import { getNotes, uploadNote, deleteNote, downloadNote } from '../controllers/noteController';
-import multer from 'multer';
+import { requireRole } from '../middleware/roleGuard';
+import { apiRateLimiter } from '../middleware/rateLimiter';
 
-const upload = multer({ dest: 'uploads/notes/' });
-const router = express.Router();
+const router = Router();
 
-router.get('/', authenticate, getNotes);
-router.post('/', authenticate, upload.single('file'), uploadNote);
-router.delete('/:id', authenticate, deleteNote);
-router.get('/:id/download', authenticate, downloadNote);
+router.get('/', apiRateLimiter, authenticate, noteController.getAll);
+router.get('/:id', apiRateLimiter, authenticate, noteController.getById);
+router.post('/', apiRateLimiter, authenticate, requireRole('teacher', 'hod', 'admin'), noteController.create);
+router.put('/:id', apiRateLimiter, authenticate, noteController.update);
+router.delete('/:id', apiRateLimiter, authenticate, noteController.delete);
 
 export default router;
-

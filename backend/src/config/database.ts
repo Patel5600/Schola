@@ -1,33 +1,24 @@
-import { Pool } from 'pg';
+import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger';
 
-export const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'schola',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || '',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+const prisma = new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
 });
 
-pool.on('connect', () => {
-  logger.info('Database connected');
+// Test database connection
+prisma.$connect()
+  .then(() => {
+    logger.info('Database connected successfully');
+  })
+  .catch((error) => {
+    logger.error('Database connection failed:', error);
+    process.exit(1);
+  });
+
+// Graceful shutdown
+process.on('beforeExit', async () => {
+  await prisma.$disconnect();
+  logger.info('Database disconnected');
 });
 
-pool.on('error', (err) => {
-  logger.error('Database connection error:', err);
-});
-
-// Test connection
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    logger.error('Database connection test failed:', err);
-  } else {
-    logger.info('Database connection test successful');
-  }
-});
-
-export default pool;
-
+export default prisma;

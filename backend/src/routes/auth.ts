@@ -1,14 +1,16 @@
-import express from 'express';
-import { login, register, verifyOTP, resendOTP, logout } from '../controllers/authController';
-import { loginRateLimiter } from '../middleware/rateLimiter';
+import { Router } from 'express';
+import { authController } from '../controllers/authController';
+import { authRateLimiter } from '../middleware/rateLimiter';
+import { authenticate } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 
-router.post('/register', register);
-router.post('/login', loginRateLimiter, login);
-router.post('/verify-otp', verifyOTP);
-router.post('/resend-otp', resendOTP);
-router.post('/logout', logout);
+router.post('/register', authRateLimiter, authController.register);
+router.post('/login', authRateLimiter, authController.login);
+router.post('/refresh', authController.refresh);
+router.post('/request-password-reset', authRateLimiter, authController.requestPasswordReset);
+router.post('/reset-password', authController.resetPassword);
+router.get('/verify-email', authController.verifyEmail);
+router.get('/me', authenticate, authController.getMe);
 
 export default router;
-

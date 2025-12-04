@@ -1,55 +1,27 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { createError } from './errorHandler';
+import { verifyAccessToken, TokenPayload } from '../utils/jwt';
+import { logger } from '../utils/logger';
 
 export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-  };
+  user?: TokenPayload;
 }
 
-export const authenticate = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-
-    if (!token) {
-      throw createError('Authentication required', 401);
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'No token provided' });
+      return;
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-      id: string;
-      email: string;
-      role: string;
-    };
-
+    const token = authHeader.substring(7);
+    const decoded = verifyAccessToken(token);
+    
     req.user = decoded;
     next();
   } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      next(createError('Invalid token', 401));
-    } else {
-      next(error);
-    }
+    logger.error('Authentication error:', error);
+    res.status(401).json({ error: 'Invalid or expired token' });
   }
 };
-
-export const authorize = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return next(createError('Authentication required', 401));
-    }
-
-    if (!roles.includes(req.user.role)) {
-      return next(createError('Insufficient permissions', 403));
-    }
-
-    next();
-  };
-};
-
